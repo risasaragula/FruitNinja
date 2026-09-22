@@ -1,3 +1,5 @@
+import os
+import sys
 import cv2
 import mediapipe as mp
 
@@ -20,10 +22,22 @@ class HandTracker:
             mp.tasks.vision.RunningMode
         )
 
+        if getattr(sys, "frozen", False):
+            base_path = sys._MEIPASS
+        else:
+            base_path = os.path.dirname(
+                os.path.abspath(__file__)
+            )
+
+        model_path = os.path.join(
+            base_path,
+            "hand_landmarker.task"
+        )
+
         options = HandLandmarkerOptions(
 
             base_options=BaseOptions(
-                model_asset_path="hand_landmarker.task"
+                model_asset_path=model_path
             ),
 
             running_mode=(
@@ -41,14 +55,11 @@ class HandTracker:
 
         self.timestamp = 0
 
-
         self.previous_point = None
 
         self.current_point = None
 
-
         self.trail = []
-
 
     def get_finger_position(self, frame):
 
@@ -62,21 +73,17 @@ class HandTracker:
             data=rgb_frame
         )
 
-        # Increase timestamp
         self.timestamp += 1
 
-        # Detect hand
         result = self.landmarker.detect_for_video(
             mp_image,
             self.timestamp
         )
 
-
         if result.hand_landmarks:
 
             hand = result.hand_landmarks[0]
 
-            # Landmark 8 = index fingertip
             index_finger = hand[8]
 
             height, width, _ = frame.shape
@@ -94,18 +101,15 @@ class HandTracker:
                 y
             )
 
-            # Add to trail
             self.trail.append(
                 self.current_point
             )
 
-            # Keep last 15 points
             if len(self.trail) > 15:
 
                 self.trail.pop(0)
 
             return self.current_point
-
 
         self.current_point = None
 
@@ -113,13 +117,11 @@ class HandTracker:
 
         return None
 
-
     def update_previous_point(self):
 
         self.previous_point = (
             self.current_point
         )
-
 
     def draw_trail(self, frame):
 
@@ -127,7 +129,6 @@ class HandTracker:
 
             return
 
-        # Draw trail
         for i in range(
             1,
             len(self.trail)
@@ -146,7 +147,6 @@ class HandTracker:
                 5
             )
 
-        # Draw fingertip
         cv2.circle(
 
             frame,
@@ -159,7 +159,6 @@ class HandTracker:
 
             -1
         )
-
 
     def close(self):
 
